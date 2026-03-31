@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Hotel, Upload, Download, User, Calendar, Briefcase, Globe, Hash, CreditCard, Car, MapPin, Mail, Phone, Clock, Users, MessageCircle, CheckCircle } from 'lucide-react';
-import { ref, push, set, serverTimestamp } from 'firebase/database';
-import { db } from './firebase';
+import { Hotel, Upload, Download, User, Calendar, Briefcase, Globe, Hash, CreditCard, Car, MapPin, Mail, Phone, Clock, Users, MessageCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 
 interface FormData {
   nomeCompleto: string;
@@ -85,7 +83,6 @@ export default function App() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [logo, setLogo] = useState<string>(ASSETS_LOGO_PATH);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
@@ -162,34 +159,22 @@ export default function App() {
       return;
     }
 
-    setIsSending(true);
     setStatusMessage(null);
 
     try {
-      // 1. Salvar no Realtime Database (Caminho: hospedes)
-      const hospedesRef = ref(db, 'hospedes');
-      const novoHospedeRef = push(hospedesRef);
-      await set(novoHospedeRef, {
-        ...formData,
-        timestamp: serverTimestamp(),
-        createdAt: new Date().toISOString()
-      });
-
-      // 2. Gerar e Baixar o PDF automaticamente (antes de limpar o formulário)
+      // 1. Gerar e Baixar o PDF automaticamente (antes de limpar o formulário)
       await generatePDF();
       
-      // 3. Limpar os campos do formulário para o próximo cliente
+      // 2. Limpar os campos do formulário para o próximo cliente
       setFormData(initialFormData);
 
       setStatusMessage({ 
         type: 'success', 
-        text: 'Check-in realizado com sucesso! A ficha foi salva e o PDF baixado. / Check-in successful! The form was saved and the PDF downloaded.' 
+        text: 'Check-in realizado com sucesso! O PDF foi baixado. / Check-in successful! The PDF was downloaded.' 
       });
     } catch (error) {
       console.error('Erro ao processar check-in:', error);
       setStatusMessage({ type: 'error', text: 'Erro ao processar o check-in. Tente novamente. / Error processing check-in. Try again.' });
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -381,15 +366,24 @@ export default function App() {
               <textarea name="acompanhantes" value={formData.acompanhantes} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm h-20" placeholder="Nome dos acompanhantes / Names of companions..." />
             </div>
 
-            <div className="md:col-span-4 pt-8">
+            <div className="md:col-span-4 pt-8 space-y-4">
               <button
                 type="button"
                 onClick={handleSubmitAndFinish}
-                disabled={isSending || isGenerating}
+                disabled={isGenerating}
                 className="w-full bg-neutral-900 text-white font-bold py-4 rounded-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
               >
-                {isSending ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : <><CheckCircle size={20} /> Finalizar Check-in e Baixar PDF / Finish Check-in and Download PDF</>}
+                <CheckCircle size={20} /> Finalizar Check-in e Baixar PDF / Finish Check-in and Download PDF
               </button>
+
+              <div className="flex items-center justify-center gap-2 text-neutral-500 text-xs bg-neutral-50 p-3 rounded-lg border border-neutral-100">
+                <ShieldCheck size={16} className="text-green-600" />
+                <p className="text-center">
+                  <strong>Privacidade Garantida:</strong> Seus dados são processados localmente no seu navegador e não são salvos em nossos servidores. 
+                  <br />
+                  <strong>Privacy Guaranteed:</strong> Your data is processed locally in your browser and is not saved on our servers.
+                </p>
+              </div>
             </div>
           </form>
         </div>
