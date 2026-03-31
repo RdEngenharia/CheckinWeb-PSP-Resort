@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Hotel, Upload, Download, User, Calendar, Briefcase, Globe, Hash, CreditCard, Car, MapPin, Mail, Phone, Clock, Users, Send, CheckCircle } from 'lucide-react';
+import { Hotel, Upload, Download, User, Calendar, Briefcase, Globe, Hash, CreditCard, Car, MapPin, Mail, Phone, Clock, Users, MessageCircle, CheckCircle } from 'lucide-react';
 import { ref, push, set, serverTimestamp } from 'firebase/database';
 import { db } from './firebase';
 
@@ -77,23 +77,39 @@ const initialFormData: FormData = {
   codigoDestino: '',
 };
 
-// Logo oficial em Base64 para evitar erros de CORS e garantir funcionamento offline
-const DEFAULT_LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjAwIDEwMCI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMxNzE3MTciIHJ4PSIxMCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNDUlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmZmZmIiBmb250LWZhbWlseT0ic2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjI0Ij5QT1JUTyBTRUdVUk88L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI3NSUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNjYThhMDQiIGZvbnQtZmFtaWx5PSJzZXJpZiIgZm9udC13ZWlnaHQ9ImJsYWNrIiBmb250LXNpemU9IjI4Ij5QUkFJQSBSRVNPUlQ8L3RleHQ+Cjwvc3ZnPg==';
+// Logo padrão em Base64 como fallback caso o arquivo na pasta assets não seja encontrado
+const FALLBACK_LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjAwIDEwMCI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMxNzE3MTciIHJ4PSIxMCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNDUlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmZmZmIiBmb250LWZhbWlseT0ic2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjI0Ij5QT1JUTyBTRUdVUk88L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI3NSUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNjYThhMDQiIGZvbnQtZmFtaWx5PSJzZXJpZiIgZm9udC13ZWlnaHQ9ImJsYWNrIiBmb250LXNpemU9IjI4Ij5QUkFJQSBSRVNPUlQ8L3RleHQ+Cjwvc3ZnPg==';
+const ASSETS_LOGO_PATH = '/assets/hotel-logo.png';
 
 export default function App() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [logo, setLogo] = useState<string | null>(DEFAULT_LOGO);
+  const [logo, setLogo] = useState<string>(ASSETS_LOGO_PATH);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('hotel-logo');
+    if (savedLogo) {
+      setLogo(savedLogo);
+    }
+  }, []);
+
+  const handleLogoError = () => {
+    if (logo === ASSETS_LOGO_PATH) {
+      setLogo(FALLBACK_LOGO);
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogo(reader.result as string);
+        const base64 = reader.result as string;
+        setLogo(base64);
+        localStorage.setItem('hotel-logo', base64);
       };
       reader.readAsDataURL(file);
     }
@@ -140,9 +156,9 @@ export default function App() {
     }
   };
 
-  const handleSubmitAndSend = async () => {
+  const handleSubmitAndFinish = async () => {
     if (!formData.nomeCompleto || !formData.email) {
-      setStatusMessage({ type: 'error', text: 'Por favor, preencha o nome e o e-mail.' });
+      setStatusMessage({ type: 'error', text: 'Por favor, preencha o nome e o e-mail. / Please fill in the name and e-mail. / Por favor, complete el nombre y el correo electrónico.' });
       return;
     }
 
@@ -151,7 +167,6 @@ export default function App() {
 
     try {
       // 1. Salvar no Realtime Database (Caminho: hospedes)
-      // Enviamos o objeto completo com todos os campos do formulário
       const hospedesRef = ref(db, 'hospedes');
       const novoHospedeRef = push(hospedesRef);
       await set(novoHospedeRef, {
@@ -163,33 +178,16 @@ export default function App() {
       // 2. Gerar e Baixar o PDF automaticamente (antes de limpar o formulário)
       await generatePDF();
       
-      // 3. Criar o link mailto para o cliente de e-mail
-      const subject = encodeURIComponent(`Novo Check-in: ${formData.nomeCompleto}`);
-      const body = encodeURIComponent(
-        `Olá,\n\nSegue os dados do check-in realizado:\n\n` +
-        `Nome: ${formData.nomeCompleto}\n` +
-        `CPF: ${formData.cpf}\n` +
-        `E-mail: ${formData.email}\n` +
-        `Data de Entrada: ${formData.dataEntrada} às ${formData.horaEntrada}\n` +
-        `Data de Saída: ${formData.dataSaida} às ${formData.horaSaida}\n\n` +
-        `O PDF da ficha de registro foi baixado automaticamente. Por favor, anexe-o a este e-mail antes de enviar.`
-      );
-      
-      const mailtoLink = `mailto:reserva@hotel.com?subject=${subject}&body=${body}`;
-      
-      // 4. Abrir o cliente de e-mail
-      window.location.href = mailtoLink;
-
-      // 5. Limpar os campos do formulário para o próximo cliente
+      // 3. Limpar os campos do formulário para o próximo cliente
       setFormData(initialFormData);
 
       setStatusMessage({ 
         type: 'success', 
-        text: 'Check-in salvo no banco de dados com sucesso! O formulário foi limpo para o próximo hóspede.' 
+        text: 'Check-in realizado com sucesso! A ficha foi salva e o PDF baixado. / Check-in successful! The form was saved and the PDF downloaded. / ¡Check-in exitoso! La ficha fue guardada y el PDF descargado.' 
       });
     } catch (error) {
       console.error('Erro ao processar check-in:', error);
-      setStatusMessage({ type: 'error', text: 'Erro ao processar o check-in. Tente novamente.' });
+      setStatusMessage({ type: 'error', text: 'Erro ao processar o check-in. Tente novamente. / Error processing check-in. Try again. / Error al procesar el check-in. Inténtelo de nuevo.' });
     } finally {
       setIsSending(false);
     }
@@ -206,17 +204,9 @@ export default function App() {
                 <Hotel className="text-white w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sistema de Check-in</h1>
-                <p className="text-neutral-500 text-sm italic font-serif">Ficha de Registro de Hóspedes (FNRH)</p>
+                <h1 className="text-2xl font-bold text-neutral-900">Sistema de Check-in / Check-in System / Sistema de Check-in</h1>
+                <p className="text-neutral-500 text-sm italic font-serif">Ficha de Registro de Hóspedes / Guest Registration Form / Ficha de Registro de Huéspedes (FNRH)</p>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <label className="cursor-pointer bg-neutral-50 hover:bg-neutral-100 border border-dashed border-neutral-300 rounded-lg px-4 py-2 transition-all flex items-center gap-2 text-sm text-neutral-600">
-                <Upload size={16} />
-                <span>Carregar Logo do Hotel</span>
-                <input type="file" className="hidden" onChange={handleLogoUpload} accept="image/*" />
-              </label>
-              {logo && <span className="text-[10px] text-green-600 font-medium uppercase tracking-wider">Logo Carregada</span>}
             </div>
           </div>
         </div>
@@ -233,13 +223,13 @@ export default function App() {
             {/* Row 1 */}
             <div className="md:col-span-3 space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <User size={14} /> Nome Completo / Full Name
+                <User size={14} /> Nome Completo / Full Name / Nombre Completo
               </label>
               <input type="text" name="nomeCompleto" value={formData.nomeCompleto} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Calendar size={14} /> Data de Nasc. / Date Born
+                <Calendar size={14} /> Data de Nasc. / Date Born / Fecha de Nac.
               </label>
               <input type="date" name="dataNascimento" value={formData.dataNascimento} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
@@ -247,39 +237,39 @@ export default function App() {
             {/* Row 2 */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Briefcase size={14} /> Profissão / Occupation
+                <Briefcase size={14} /> Profissão / Occupation / Profesión
               </label>
               <input type="text" name="profissao" value={formData.profissao} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Globe size={14} /> Nacionalidade / Nationality
+                <Globe size={14} /> Nacionalidade / Nationality / Nacionalidad
               </label>
               <input type="text" name="nacionalidade" value={formData.nacionalidade} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Hash size={14} /> Idade / Age
+                <Hash size={14} /> Idade / Age / Edad
               </label>
               <input type="number" name="idade" value={formData.idade} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Sexo / Sex</label>
+              <label className="text-xs font-semibold text-neutral-700">Sexo / Sex / Sexo</label>
               <select name="sexo" value={formData.sexo} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm">
-                <option value="">Selecione</option>
-                <option value="Masculino">Masculino</option>
-                <option value="Feminino">Feminino</option>
+                <option value="">Selecione / Select / Seleccione</option>
+                <option value="Masculino">Masculino / Male / Masculino</option>
+                <option value="Feminino">Feminino / Female / Femenino</option>
               </select>
             </div>
 
             {/* Row 3 */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Doc. Identidade / Travel Doc</label>
-              <input type="text" name="documentoNumero" value={formData.documentoNumero} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" placeholder="Número" />
+              <label className="text-xs font-semibold text-neutral-700">Doc. Identidade / Travel Doc / Doc. Identidad</label>
+              <input type="text" name="documentoNumero" value={formData.documentoNumero} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" placeholder="Número / Number / Número" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Tipo / Type</label>
-              <input type="text" name="documentoTipo" value={formData.documentoTipo} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" placeholder="RG, Passaporte..." />
+              <label className="text-xs font-semibold text-neutral-700">Tipo / Type / Tipo</label>
+              <input type="text" name="documentoTipo" value={formData.documentoTipo} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" placeholder="RG, Passaporte, Pasaporte..." />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700">CPF</label>
@@ -287,7 +277,7 @@ export default function App() {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Car size={14} /> Placa / Plate
+                <Car size={14} /> Placa / Plate / Matrícula
               </label>
               <input type="text" name="placaVeiculo" value={formData.placaVeiculo} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
@@ -295,16 +285,16 @@ export default function App() {
             {/* Row 4 */}
             <div className="md:col-span-2 space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <MapPin size={14} /> Residência Permanente / Permanent Address
+                <MapPin size={14} /> Residência Permanente / Permanent Address / Residencia Permanente
               </label>
               <input type="text" name="residenciaPermanente" value={formData.residenciaPermanente} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">CEP / Zip Code</label>
+              <label className="text-xs font-semibold text-neutral-700">CEP / Zip Code / C.P.</label>
               <input type="text" name="cep" value={formData.cep} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Cidade, Estado / City, State</label>
+              <label className="text-xs font-semibold text-neutral-700">Cidade, Estado / City, State / Ciudad, Estado</label>
               <input type="text" name="cidadeEstado" value={formData.cidadeEstado} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
 
@@ -316,44 +306,44 @@ export default function App() {
               <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Última Procedência / Arriving from</label>
+              <label className="text-xs font-semibold text-neutral-700">Última Procedência / Arriving from / Última Procedencia</label>
               <input type="text" name="ultimaProcedencia" value={formData.ultimaProcedencia} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Próximo Destino / Next Destination</label>
+              <label className="text-xs font-semibold text-neutral-700">Próximo Destino / Next Destination / Próximo Destino</label>
               <input type="text" name="proximoDestino" value={formData.proximoDestino} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
 
             {/* Row 6 - Motivo e Meio */}
             <div className="md:col-span-2 space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Motivo da Viagem / Purpose of Trip</label>
+              <label className="text-xs font-semibold text-neutral-700">Motivo da Viagem / Purpose of Trip / Motivo del Viaje</label>
               <select name="motivoViagem" value={formData.motivoViagem} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm">
-                <option value="Negócio">Negócio / Business</option>
-                <option value="Turismo">Turismo / Tourism</option>
-                <option value="Convenção">Convenção / Convention</option>
-                <option value="Outro">Outro / Other</option>
+                <option value="Negócio">Negócio / Business / Negocio</option>
+                <option value="Turismo">Turismo / Tourism / Turismo</option>
+                <option value="Convenção">Convenção / Convention / Convención</option>
+                <option value="Outro">Outro / Other / Otro</option>
               </select>
             </div>
             <div className="md:col-span-2 space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Meio de Transporte / Arriving by</label>
+              <label className="text-xs font-semibold text-neutral-700">Meio de Transporte / Arriving by / Medio de Transporte</label>
               <select name="meioTransporte" value={formData.meioTransporte} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm">
-                <option value="Avião">Avião / Plane</option>
-                <option value="Navio">Navio / Ship</option>
-                <option value="Automóvel">Automóvel / Car</option>
-                <option value="Ônibus">Ônibus / Bus</option>
+                <option value="Avião">Avião / Plane / Avión</option>
+                <option value="Navio">Navio / Ship / Barco</option>
+                <option value="Automóvel">Automóvel / Car / Automóvil</option>
+                <option value="Ônibus">Ônibus / Bus / Autobús</option>
               </select>
             </div>
 
             {/* Row 7 - Telefones */}
             <div className="md:col-span-2 space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Phone size={14} /> Telefone Residencial / Home Telephone
+                <Phone size={14} /> Telefone Residencial / Home Telephone / Teléfono Residencial
               </label>
               <input type="text" name="telefoneResidencial" value={formData.telefoneResidencial} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
             <div className="md:col-span-2 space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Phone size={14} /> Telefone Comercial / Business Telephone
+                <Phone size={14} /> Telefone Comercial / Business Telephone / Teléfono Comercial
               </label>
               <input type="text" name="telefoneComercial" value={formData.telefoneComercial} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
             </div>
@@ -361,24 +351,24 @@ export default function App() {
             {/* Row 8 - Entrada/Saída */}
             <div className="grid grid-cols-2 gap-4 md:col-span-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-700">Entrada - Data</label>
+                <label className="text-xs font-semibold text-neutral-700">Entrada / Check-in / Entrada</label>
                 <input type="date" name="dataEntrada" value={formData.dataEntrada} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                  <Clock size={14} /> Hora
+                  <Clock size={14} /> Hora / Time / Hora
                 </label>
                 <input type="time" name="horaEntrada" value={formData.horaEntrada} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 md:col-span-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-700">Saída - Data</label>
+                <label className="text-xs font-semibold text-neutral-700">Saída / Check-out / Salida</label>
                 <input type="date" name="dataSaida" value={formData.dataSaida} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                  <Clock size={14} /> Hora
+                  <Clock size={14} /> Hora / Time / Hora
                 </label>
                 <input type="time" name="horaSaida" value={formData.horaSaida} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm" />
               </div>
@@ -386,48 +376,19 @@ export default function App() {
 
             <div className="md:col-span-4 space-y-1">
               <label className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
-                <Users size={14} /> Acompanhantes
+                <Users size={14} /> Acompanhantes / Companions / Acompañantes
               </label>
-              <textarea name="acompanhantes" value={formData.acompanhantes} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm h-20" placeholder="Nome dos acompanhantes..." />
+              <textarea name="acompanhantes" value={formData.acompanhantes} onChange={handleInputChange} className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm h-20" placeholder="Nome dos acompanhantes / Names of companions / Nombre de los acompañantes..." />
             </div>
 
-            {/* Row 9 - EMBRATUR */}
-            <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase">Código País</label>
-                <input type="text" name="codigoPais" value={formData.codigoPais} onChange={handleInputChange} className="w-full px-3 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase">Código Prof</label>
-                <input type="text" name="codigoProf" value={formData.codigoProf} onChange={handleInputChange} className="w-full px-3 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase">Código Proced</label>
-                <input type="text" name="codigoProced" value={formData.codigoProced} onChange={handleInputChange} className="w-full px-3 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase">Código Destino</label>
-                <input type="text" name="codigoDestino" value={formData.codigoDestino} onChange={handleInputChange} className="w-full px-3 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs" />
-              </div>
-            </div>
-
-            <div className="md:col-span-4 pt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-4 pt-8">
               <button
                 type="button"
-                onClick={generatePDF}
-                disabled={isGenerating}
-                className="w-full bg-neutral-100 text-neutral-900 font-bold py-4 rounded-xl hover:bg-neutral-200 transition-all flex items-center justify-center gap-3 border border-neutral-200 disabled:opacity-50"
-              >
-                {isGenerating ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-neutral-900 border-t-transparent" /> : <><Download size={20} /> Baixar PDF</>}
-              </button>
-              
-              <button
-                type="button"
-                onClick={handleSubmitAndSend}
+                onClick={handleSubmitAndFinish}
                 disabled={isSending || isGenerating}
                 className="w-full bg-neutral-900 text-white font-bold py-4 rounded-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
               >
-                {isSending ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : <><Send size={20} /> Enviar por E-mail</>}
+                {isSending ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : <><CheckCircle size={20} /> Finalizar Check-in e Baixar PDF / Finish Check-in and Download PDF / Finalizar Check-in y Descargar PDF</>}
               </button>
             </div>
           </form>
@@ -441,17 +402,17 @@ export default function App() {
           <div className="border-[1.5px] border-black rounded-xl p-4 mb-4 flex items-center justify-between" style={{ borderColor: '#000000' }}>
             <div className="flex items-center gap-4">
               {logo ? (
-                <img src={logo} alt="Logo" className="h-12 w-auto max-w-[60mm] object-contain" />
+                <img 
+                  src={logo} 
+                  alt="Logo" 
+                  className="h-12 w-auto max-w-[60mm] object-contain" 
+                  onError={handleLogoError}
+                />
               ) : (
                 <div className="bg-neutral-900 p-3 rounded">
                   <Hotel className="text-white w-10 h-10" />
                 </div>
               )}
-              <div className="text-xs font-bold leading-tight">
-                <p className="text-lg tracking-tighter">PORTO SEGURO</p>
-                <p className="text-xl font-black text-yellow-600">PRAIA RESORT</p>
-                <p className="text-[8px] tracking-[0.2em]">ALL INCLUSIVE</p>
-              </div>
             </div>
             <h1 className="text-xl font-bold uppercase mr-4">Ficha de Registro de Hóspedes</h1>
           </div>
@@ -461,11 +422,11 @@ export default function App() {
             {/* Row 1 */}
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Nome Completo/Full Name</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Nome Completo / Full Name / Nombre Completo</p>
                 <p className="font-bold text-sm h-6">{formData.nomeCompleto}</p>
               </div>
               <div className="w-48 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Data de Nasc/Date Born</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Data de Nasc. / Date Born / Fecha de Nac.</p>
                 <p className="font-bold text-sm h-6 text-center">{formData.dataNascimento ? new Date(formData.dataNascimento).toLocaleDateString('pt-BR') : '/ /'}</p>
               </div>
             </div>
@@ -473,27 +434,27 @@ export default function App() {
             {/* Row 2 */}
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Profissão/Occupation</p>
-                <p className="font-bold h-5">{formData.profissao}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Profissão / Occupation / Profesión</p>
+                <p className="font-bold text-sm h-6">{formData.profissao}</p>
               </div>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Nacionalidade/Nationality</p>
-                <p className="font-bold h-5">{formData.nacionalidade}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Nacionalidade / Nationality / Nacionalidad</p>
+                <p className="font-bold text-sm h-6">{formData.nacionalidade}</p>
               </div>
               <div className="w-20 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Idade/Age</p>
-                <p className="font-bold h-5 text-center">{formData.idade}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Idade / Age / Edad</p>
+                <p className="font-bold text-sm h-6 text-center">{formData.idade}</p>
               </div>
               <div className="w-48 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Sexo/Sex</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Sexo / Sex / Sexo</p>
                 <div className="flex gap-4 mt-1">
                   <div className="flex items-center gap-1">
                     <div className={`w-3 h-3 border border-black flex items-center justify-center`} style={{ borderColor: '#000000' }}>{formData.sexo === 'Masculino' ? 'X' : ''}</div>
-                    <span>Masculino</span>
+                    <span>Masc / Male / Masc</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className={`w-3 h-3 border border-black flex items-center justify-center`} style={{ borderColor: '#000000' }}>{formData.sexo === 'Feminino' ? 'X' : ''}</div>
-                    <span>Feminino</span>
+                    <span>Fem / Female / Fem</span>
                   </div>
                 </div>
               </div>
@@ -503,16 +464,16 @@ export default function App() {
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
                 <div className="p-1 border-b border-black" style={{ borderBottomColor: '#000000' }}>
-                  <p className="italic text-gray-500" style={{ color: '#737373' }}>Documento de Identidade/Travel Document</p>
+                  <p className="italic text-gray-500" style={{ color: '#737373' }}>Documento de Identidade / Travel Document / Doc. Identidad</p>
                 </div>
                 <div className="flex">
                   <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Número/Number</p>
-                    <p className="font-bold h-5">{formData.documentoNumero}</p>
+                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Número / Number / Número</p>
+                    <p className="font-bold text-sm h-6">{formData.documentoNumero}</p>
                   </div>
                   <div className="flex-1 p-1">
-                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Tipo/Type</p>
-                    <p className="font-bold h-5">{formData.documentoTipo}</p>
+                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Tipo / Type / Tipo</p>
+                    <p className="font-bold text-sm h-6">{formData.documentoTipo}</p>
                   </div>
                 </div>
               </div>
@@ -521,7 +482,7 @@ export default function App() {
                 <p className="font-bold h-12 flex items-center justify-center text-base">{formData.cpf}</p>
               </div>
               <div className="w-40 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Placa</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Placa / Plate / Matrícula</p>
                 <p className="font-bold h-12 flex items-center justify-center text-base">{formData.placaVeiculo}</p>
               </div>
             </div>
@@ -529,20 +490,20 @@ export default function App() {
             {/* Row 4 */}
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-[2] p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Residência Permanente/Permanent Address</p>
-                <p className="font-bold h-5">{formData.residenciaPermanente}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Residência Permanente / Permanent Address / Residencia Permanente</p>
+                <p className="font-bold text-sm h-6">{formData.residenciaPermanente}</p>
               </div>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>CEP/Zip Code</p>
-                <p className="font-bold h-5">{formData.cep}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>CEP / Zip Code / C.P.</p>
+                <p className="font-bold text-sm h-6">{formData.cep}</p>
               </div>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Cidade, Estado/City, State</p>
-                <p className="font-bold h-5">{formData.cidadeEstado}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Cidade, Estado / City, State / Ciudad, Estado</p>
+                <p className="font-bold text-sm h-6">{formData.cidadeEstado}</p>
               </div>
               <div className="flex-1 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>País/Country</p>
-                <p className="font-bold h-5">{formData.pais || 'Brasil'}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>País / Country / País</p>
+                <p className="font-bold text-sm h-6">{formData.pais || 'Brasil'}</p>
               </div>
             </div>
 
@@ -550,24 +511,24 @@ export default function App() {
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
                 <p className="italic text-gray-500" style={{ color: '#737373' }}>E-mail</p>
-                <p className="font-bold h-5">{formData.email}</p>
+                <p className="font-bold text-sm h-6">{formData.email}</p>
               </div>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Última Procedência/Arriving from</p>
-                <p className="font-bold h-5">{formData.ultimaProcedencia}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Última Procedência / Arriving from / Última Procedencia</p>
+                <p className="font-bold text-sm h-6">{formData.ultimaProcedencia}</p>
               </div>
               <div className="flex-1 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Próximo Destino/Next Destination</p>
-                <p className="font-bold h-5">{formData.proximoDestino}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Próximo Destino / Next Destination / Próximo Destino</p>
+                <p className="font-bold text-sm h-6">{formData.proximoDestino}</p>
               </div>
             </div>
 
             {/* Row 6 */}
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Motivo da Viagem/Purpose of Trip</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Motivo da Viagem / Purpose of Trip / Motivo del Viaje</p>
                 <div className="grid grid-cols-2 gap-y-1 mt-1">
-                  {['Negócio/Business', 'Turismo/Tourism', 'Convenção/Convention', 'Outro/Other'].map(m => (
+                  {['Negócio/Business/Negocio', 'Turismo/Tourism/Turismo', 'Convenção/Convention/Convención', 'Outro/Other/Otro'].map(m => (
                     <div key={m} className="flex items-center gap-1">
                       <div className="w-3 h-3 border border-black flex items-center justify-center" style={{ borderColor: '#000000' }}>{formData.motivoViagem === m.split('/')[0] ? 'X' : ''}</div>
                       <span>{m}</span>
@@ -576,11 +537,11 @@ export default function App() {
                 </div>
               </div>
               <div className="flex-1 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Meio de Transporte/Arriving by</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Meio de Transporte / Arriving by / Medio de Transporte</p>
                 <div className="grid grid-cols-2 gap-y-1 mt-1">
-                  {['Avião/Plane', 'Navio/Ship', 'Automóvel/Car', 'Ônibus/Bus'].map(t => (
+                  {['Avião/Plane/Avión', 'Navio/Ship/Barco', 'Automóvel/Car/Auto', 'Ônibus/Bus/Bus'].map(t => (
                     <div key={t} className="flex items-center gap-1">
-                      <div className="w-3 h-3 border border-black flex items-center justify-center" style={{ borderColor: '#000000' }}>{formData.meioTransporte === t.split('/')[0] ? 'X' : t === 'Automóvel/Car' && formData.meioTransporte === 'Automóvel' ? 'X' : ''}</div>
+                      <div className="w-3 h-3 border border-black flex items-center justify-center" style={{ borderColor: '#000000' }}>{formData.meioTransporte === t.split('/')[0] ? 'X' : t === 'Automóvel/Car/Auto' && formData.meioTransporte === 'Automóvel' ? 'X' : ''}</div>
                       <span>{t}</span>
                     </div>
                   ))}
@@ -591,16 +552,16 @@ export default function App() {
             {/* Row 7 */}
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Assinatura do Hóspede/Guest's Signature</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Assinatura do Hóspede / Guest's Signature / Firma del Huésped</p>
                 <p className="text-xl font-bold mt-2">X</p>
               </div>
               <div className="w-64 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Telefone Residencial/Home Telephone</p>
-                <p className="font-bold h-8 mt-2">{formData.telefoneResidencial}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Telefone Residencial / Home Telephone / Tel. Residencial</p>
+                <p className="font-bold text-sm h-8 mt-2">{formData.telefoneResidencial}</p>
               </div>
               <div className="w-64 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Telefone Comercial/Business Telephone</p>
-                <p className="font-bold h-8 mt-2">{formData.telefoneComercial}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Telefone Comercial / Business Telephone / Tel. Comercial</p>
+                <p className="font-bold text-sm h-8 mt-2">{formData.telefoneComercial}</p>
               </div>
             </div>
 
@@ -608,37 +569,37 @@ export default function App() {
             <div className="flex border-b border-black" style={{ borderBottomColor: '#000000' }}>
               <div className="flex-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
                 <div className="p-1 border-b border-black bg-gray-50" style={{ borderBottomColor: '#000000', backgroundColor: '#f9fafb' }}>
-                  <p className="font-bold">Entrada</p>
+                  <p className="font-bold">Entrada / Check-in / Entrada</p>
                 </div>
                 <div className="flex p-1">
                   <div className="flex-1">
-                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Data</p>
-                    <p className="font-bold">{formData.dataEntrada}</p>
+                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Data / Date / Fecha</p>
+                    <p className="font-bold text-sm">{formData.dataEntrada}</p>
                   </div>
                   <div className="flex-1">
-                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Hora</p>
-                    <p className="font-bold">{formData.horaEntrada}</p>
+                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Hora / Time / Hora</p>
+                    <p className="font-bold text-sm">{formData.horaEntrada}</p>
                   </div>
                 </div>
               </div>
               <div className="flex-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
                 <div className="p-1 border-b border-black bg-gray-50" style={{ borderBottomColor: '#000000', backgroundColor: '#f9fafb' }}>
-                  <p className="font-bold">Saída</p>
+                  <p className="font-bold">Saída / Check-out / Salida</p>
                 </div>
                 <div className="flex p-1">
                   <div className="flex-1">
-                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Data</p>
-                    <p className="font-bold">{formData.dataSaida}</p>
+                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Data / Date / Fecha</p>
+                    <p className="font-bold text-sm">{formData.dataSaida}</p>
                   </div>
                   <div className="flex-1">
-                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Hora</p>
-                    <p className="font-bold">{formData.horaSaida}</p>
+                    <p className="italic text-gray-500" style={{ color: '#737373' }}>Hora / Time / Hora</p>
+                    <p className="font-bold text-sm">{formData.horaSaida}</p>
                   </div>
                 </div>
               </div>
               <div className="flex-1 p-1">
-                <p className="italic text-gray-500" style={{ color: '#737373' }}>Acompanhantes</p>
-                <p className="font-bold text-[8px] leading-tight">{formData.acompanhantes}</p>
+                <p className="italic text-gray-500" style={{ color: '#737373' }}>Acompanhantes / Companions / Acompañantes</p>
+                <p className="font-bold text-[10px] leading-tight">{formData.acompanhantes}</p>
               </div>
             </div>
 
@@ -646,24 +607,15 @@ export default function App() {
             <div className="flex">
               <div className="w-20 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
                 <p className="font-bold">FNRH</p>
-                <p className="h-4">{formData.fnrh}</p>
+                <p className="h-4 text-sm font-bold">{formData.fnrh}</p>
               </div>
               <div className="w-32 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="font-bold">Registro</p>
-                <p className="h-4">{formData.registro}</p>
+                <p className="font-bold">Registro / Registration / Registro</p>
+                <p className="h-4 text-sm font-bold">{formData.registro}</p>
               </div>
-              <div className="w-24 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>
-                <p className="font-bold">UH Nº</p>
-                <p className="h-4">{formData.uhNo}</p>
-              </div>
-              <div className="flex-1">
-                <div className="p-1 border-b border-black italic text-gray-500" style={{ borderBottomColor: '#000000', color: '#737373' }}>Para uso da EMBRATUR</div>
-                <div className="flex text-[8px] font-bold text-center">
-                  <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>Código País<br/>{formData.codigoPais}</div>
-                  <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>Código Prof<br/>{formData.codigoProf}</div>
-                  <div className="flex-1 p-1 border-r border-black" style={{ borderRightColor: '#000000' }}>Código Proced<br/>{formData.codigoProced}</div>
-                  <div className="flex-1 p-1">Código Destino<br/>{formData.codigoDestino}</div>
-                </div>
+              <div className="w-24 p-1">
+                <p className="font-bold">UH Nº / Room No / Hab. Nº</p>
+                <p className="h-4 text-sm font-bold">{formData.uhNo}</p>
               </div>
             </div>
           </div>
