@@ -1,0 +1,10 @@
+{
+  "projectId": "checkin-online-psp-resort",
+  "appId": "1:761684058704:web:85b20d89f96789f287e755",
+  "apiKey": "AIzaSyCKURY_IHHcF43O4QRl4fHZ_Me0_SoTTcI",
+  "authDomain": "checkin-online-psp-resort.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "checkin-online-psp-resort.firebasestorage.app",
+  "messagingSenderId": "761684058704",
+  "measurementId": ""
+}

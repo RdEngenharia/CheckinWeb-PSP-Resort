@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isValidCheckin(data) {
+      return data.nomeCompleto is string && data.nomeCompleto.size() > 0 &&
+             data.email is string && data.email.size() > 0;
+    }
+
+    match /checkins/{checkinId} {
+      // Allow anyone to create a check-in (e.g., guests filling the form)
+      // In a real app, you'd restrict this to authenticated users or specific origins
+      allow create: if isValidCheckin(request.resource.data);
+      
+      // Only authenticated staff (e.g., admins) can read or update check-ins
+      allow read, update, delete: if isAuthenticated();
+    }
+  }
+}

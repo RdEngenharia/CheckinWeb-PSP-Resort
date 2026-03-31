@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "checkin": {
+      "title": "Hotel Check-in",
+      "description": "Guest registration data for hotel check-in.",
+      "type": "object",
+      "properties": {
+        "nomeCompleto": { "type": "string", "description": "Full name of the guest." },
+        "dataNascimento": { "type": "string", "format": "date", "description": "Guest's date of birth." },
+        "profissao": { "type": "string", "description": "Guest's profession." },
+        "nacionalidade": { "type": "string", "description": "Guest's nationality." },
+        "idade": { "type": "string", "description": "Guest's age." },
+        "sexo": { "type": "string", "enum": ["Masculino", "Feminino"], "description": "Guest's gender." },
+        "documentoNumero": { "type": "string", "description": "Identity document number." },
+        "documentoTipo": { "type": "string", "description": "Type of identity document." },
+        "cpf": { "type": "string", "description": "Guest's CPF." },
+        "placaVeiculo": { "type": "string", "description": "Vehicle license plate." },
+        "residenciaPermanente": { "type": "string", "description": "Permanent address." },
+        "cep": { "type": "string", "description": "ZIP code." },
+        "cidadeEstado": { "type": "string", "description": "City and state." },
+        "pais": { "type": "string", "description": "Country." },
+        "email": { "type": "string", "format": "email", "description": "Guest's email address." },
+        "ultimaProcedencia": { "type": "string", "description": "Last origin." },
+        "proximoDestino": { "type": "string", "description": "Next destination." },
+        "motivoViagem": { "type": "string", "description": "Reason for travel." },
+        "meioTransporte": { "type": "string", "description": "Mode of transport." },
+        "telefoneResidencial": { "type": "string", "description": "Home phone." },
+        "telefoneComercial": { "type": "string", "description": "Business phone." },
+        "dataEntrada": { "type": "string", "format": "date", "description": "Check-in date." },
+        "horaEntrada": { "type": "string", "description": "Check-in time." },
+        "dataSaida": { "type": "string", "format": "date", "description": "Check-out date." },
+        "horaSaida": { "type": "string", "description": "Check-out time." },
+        "acompanhantes": { "type": "string", "description": "Accompanying guests." },
+        "fnrh": { "type": "string", "description": "FNRH number." },
+        "registro": { "type": "string", "description": "Registration number." },
+        "uhNo": { "type": "string", "description": "Unit number." },
+        "codigoPais": { "type": "string", "description": "Country code." },
+        "codigoProf": { "type": "string", "description": "Profession code." },
+        "codigoProced": { "type": "string", "description": "Origin code." },
+        "codigoDestino": { "type": "string", "description": "Destination code." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["nomeCompleto", "email"]
+    }
+  },
+  "firestore": {
+    "/checkins/{checkinId}": {
+      "schema": "checkin",
+      "description": "Collection of hotel check-in records."
+    }
+  }
+}
